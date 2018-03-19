@@ -1210,6 +1210,10 @@ impl<C: Completer> Editor<C> {
     pub fn set_completer(&mut self, completer: Option<C>) {
         self.completer = completer;
     }
+    /// Return a mutable reference to the completer.
+    pub fn get_completer(&mut self) -> Option<&mut C> {
+        self.completer.as_mut()
+    }
 
     /// Bind a sequence to a command.
     pub fn bind_sequence(&mut self, key_seq: KeyPress, cmd: Cmd) -> Option<Cmd> {
