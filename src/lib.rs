@@ -870,6 +870,7 @@ fn reverse_incremental_search<R: RawReader>(rdr: &mut R,
 /// (e.g., C-c will exit readline)
 #[allow(let_unit_value)]
 fn readline_edit<C: Completer>(prompt: &str,
+                               initial: &str,
                                editor: &mut Editor<C>,
                                original_mode: tty::Mode)
                                -> Result<String> {
@@ -884,6 +885,7 @@ fn readline_edit<C: Completer>(prompt: &str,
                            prompt,
                            editor.history.len(),
                            editor.custom_bindings.clone());
+    s.line.replace((0..0), initial);
     try!(s.refresh_line());
 
     let mut rdr = try!(s.term.create_reader(&editor.config));
@@ -1118,10 +1120,10 @@ impl Drop for Guard {
 
 /// Readline method that will enable RAW mode, call the `readline_edit()`
 /// method and disable raw mode
-fn readline_raw<C: Completer>(prompt: &str, editor: &mut Editor<C>) -> Result<String> {
+fn readline_raw<C: Completer>(prompt: &str, initial: &str, editor: &mut Editor<C>) -> Result<String> {
     let original_mode = try!(editor.term.enable_raw_mode());
     let guard = Guard(original_mode);
-    let user_input = readline_edit(prompt, editor, original_mode);
+    let user_input = readline_edit(prompt, initial, editor, original_mode);
     drop(guard); // try!(disable_raw_mode(original_mode));
     println!("");
     user_input
@@ -1163,8 +1165,9 @@ impl<C: Completer> Editor<C> {
         }
     }
 
-    /// This method will read a line from STDIN and will display a `prompt`
-    pub fn readline(&mut self, prompt: &str) -> Result<String> {
+    /// This method will read a line from STDIN and will display a `prompt`.
+    /// The line will be prefilled with an initial string.
+    pub fn readline_with_initial(&mut self, prompt: &str, initial: &str) -> Result<String> {
         if self.term.is_unsupported() {
             debug!(target: "rustyline", "unsupported terminal");
             // Write prompt and flush it to stdout
@@ -1177,8 +1180,13 @@ impl<C: Completer> Editor<C> {
             // Not a tty: read from file / pipe.
             readline_direct()
         } else {
-            readline_raw(prompt, self)
+            readline_raw(prompt, initial, self)
         }
+    }
+
+    /// This method will read a line from STDIN and will display a `prompt`
+    pub fn readline(&mut self, prompt: &str) -> Result<String> {
+        self.readline_with_initial(prompt, "")
     }
 
     /// Load the history from the specified file.
